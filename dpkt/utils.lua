@@ -14,6 +14,14 @@ return {
         return ((n << 8) & 0x00ff00ff) | ((n >> 8) & 0xff00ff00)
     end,
 
+    ntohls = function(n)
+        local a = (n << 24) & 0xff000000
+        local b = (n << 8) & 0x00ff0000
+        local c = (n >> 8) & 0x0000ff00
+        local d = (n >> 24) & 0x000000ff
+        return a | b | c | d
+    end,
+
     mac2str = function(n)
         local a = n & 0xff
         local b = (n >> 8) & 0xff

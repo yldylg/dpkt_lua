@@ -123,7 +123,11 @@ setmetatable(PcapReader, meta)
 function PcapReader:init(file)
     local o = {file = file}
     setmetatable(o, {__index = self, __name = 'PcapReader'})
-    o.fp = io.open(o.file, 'rb')
+    if type(o.file) == 'userdata' and type(o.file.read) == 'function' then
+        o.fp = o.file
+    else
+        o.fp = io.open(o.file, 'rb')
+    end
     local hdr, ma, mi, tz, sf, sl, lt = string.unpack('c4I2I2I4I4I4I4', o.fp:read(24))
     o.pcaphdr = '0x' .. string.reverse(utils.hex(hdr))
     o.major = ma

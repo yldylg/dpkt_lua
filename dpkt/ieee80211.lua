@@ -154,43 +154,90 @@ msub[Dot11.M_ACTION] = function(self, data)
 end
 --
 csub[Dot11.C_RTS] = function(self, data)
-    --
+    local dst, src = string.unpack('I6I6', data)
+    self.dst = utils.mac2str(dst)
+    self.src = utils.mac2str(src)
+    return string.sub(data, 13)
 end
 csub[Dot11.C_CTS] = function(self, data)
-    --
+    local dst = string.unpack('I6', data)
+    self.dst = utils.mac2str(dst)
+    return string.sub(data, 7)
 end
-csub[Dot11.C_ACK] = function(self, data)
-    --
-end
+csub[Dot11.C_ACK] = csub[Dot11.C_CTS]
 csub[Dot11.C_BLOCK_ACK_REQ] = function(self, data)
-    --
+    local dst, src, ctl, seq = string.unpack('I6I6I2I2', data)
+    self.dst = utils.mac2str(dst)
+    self.src = utils.mac2str(src)
+    self.ctl = utils.ntohs(ctl)
+    self.seq = utils.ntohs(seq)
+    return string.sub(data, 13)
 end
-csub[Dot11.C_BLOCK_ACK] = function(self, data)
-    --
+csub[Dot11.C_BLOCK_ACK] = csub[Dot11.C_BLOCK_ACK_REQ]
+csub[Dot11.C_CF_END] = csub[Dot11.C_RTS]
+--
+local dsubsub = {}
+dsubsub[Dot11.DATA_DATA] = function(self, data)
+    local dst, src, bssid, frag_seq = string.unpack('I6I6I6I2', data)
+    self.dst = utils.mac2str(dst)
+    self.src = utils.mac2str(src)
+    self.bssid = utils.mac2str(bssid)
+    self.frag_seq = frag_seq
+    return string.sub(data, 21)
 end
-csub[Dot11.C_CF_END] = function(self, data)
-    --
+dsubsub[Dot11.FROM_DS_FLAG] = function(self, data)
+    local dst, bssid, src, frag_seq = string.unpack('I6I6I6I2', data)
+    self.dst = utils.mac2str(dst)
+    self.bssid = utils.mac2str(bssid)
+    self.src = utils.mac2str(src)
+    self.frag_seq = frag_seq
+    return string.sub(data, 21)
+end
+dsubsub[Dot11.TO_DS_FLAG] = function(self, data)
+    local bssid, src, dst, frag_seq = string.unpack('I6I6I6I2', data)
+    self.bssid = utils.mac2str(bssid)
+    self.src = utils.mac2str(src)
+    self.dst = utils.mac2str(dst)
+    self.frag_seq = frag_seq
+    return string.sub(data, 21)
+end
+dsubsub[Dot11.INTER_DS_FLAG] = function(self, data)
+    local dst, src, da, frag_seq, sa = string.unpack('I6I6I6I2I6', data)
+    self.dst = utils.mac2str(dst)
+    self.src = utils.mac2str(src)
+    self.da = utils.mac2str(da)
+    self.frag_seq = frag_seq
+    self.sa = utils.mac2str(sa)
+    return string.sub(data, 27)
 end
 --
-dsub[Dot11.DATA_DATA] = function(self, data)
-    --
+dsub[Dot11.D_DATA] = function(self, data)
+    local parser = dsubsub[self.to_ds * 10 + self.from_ds]
+    if parser ~= nil then
+        local dt = parser(self, data)
+        if dt ~= nil then
+            self.data = dt
+        end
+    end
 end
-dsub[Dot11.FROM_DS_FLAG] = function(self, data)
-    --
+dsub[Dot11.D_NULL] = dsub[Dot11.D_DATA]
+dsub[Dot11.D_QOS_DATA] = function(self, data)
+    dsub[Dot11.D_DATA](self, data)
+    if self.data ~= nil then
+        local qos_ctrl = string.unpack('I2', self.data)
+        self.qos_ctrl = utils.ntohs(qos_ctrl)
+        self.data = string.sub(self.data, 3)
+        -- print('qos_ctrl', self.qos_ctrl)
+    end
 end
-dsub[Dot11.TO_DS_FLAG] = function(self, data)
-    --
-end
-dsub[Dot11.INTER_DS_FLAG] = function(self, data)
-    --
-end
+dsub[Dot11.D_QOS_NULL] = dsub[Dot11.D_DATA]
 --
 
 Dot11.frame_parser = {}
 Dot11.frame_parser[Dot11.MGMT_TYPE] = {function(self, data)
     local dst, src, bssid, frag_seq = string.unpack('I6I6I6I2', data)
-    self.src = utils.mac2str(src)
     self.dst = utils.mac2str(dst)
+    self.src = utils.mac2str(src)
     self.bssid = utils.mac2str(bssid)
     self.frag_seq = frag_seq
     return string.sub(data, 21)
@@ -199,7 +246,7 @@ Dot11.frame_parser[Dot11.CTL_TYPE] = {function(self, data)
     return data
 end, csub}
 Dot11.frame_parser[Dot11.DATA_TYPE] = {function(self, data)
-    --
+    return data
 end, dsub}
 --
 
@@ -277,7 +324,7 @@ function Dot11:unpack()
     if self.type == Dot11.MGMT_TYPE then
         self:unpack_ies(data)
     end
-    -- print(self.src, self.dst, self.bssid, self.ssid.info)
+    -- print(self.src, self.dst, self.bssid)
 end
 
 function Dot11:unpack_ies(data)

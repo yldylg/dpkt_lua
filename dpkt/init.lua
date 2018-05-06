@@ -9,6 +9,6 @@ return {
     UDP = require("dpkt.udp"),
     Radiotap = require("dpkt.radiotap"),
     Dot11 = require("dpkt.ieee80211"),
-    EAPOL = require("dpkt.eapol"),
-    LLC = require("dpkt.llc")
+    LLC = require("dpkt.llc"),
+    EAPOL = require("dpkt.eapol")
 }

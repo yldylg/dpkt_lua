@@ -33,7 +33,7 @@ function ARP:unpack()
     self.tha = utils.mac2str(tha)
     self.tpa = utils.ip2str(tpa)
     self.data = string.sub(self.__buf, 29)
-    print(self.hrd, self.pro, self.hln, self.pln, self.op, self.sha, self.spa, self.tha, self.tpa)
+    -- print(self.hrd, self.pro, self.hln, self.pln, self.op, self.sha, self.spa, self.tha, self.tpa)
 end
 
 function ARP:pack()
